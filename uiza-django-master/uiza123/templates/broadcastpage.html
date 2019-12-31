@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+<div style = "background-color: #282c34;
+color: white;
+display: flex;
+flex-direction: column;
+font-size: calc(10px + 2vmin);">
+{% block body_block %}
+
+
+<!-- form for the broadcasting page which lets user to select the region and start broadcasting -->
+<h1>UIZA GUIDE</h1>
+<div style="align-content:left;float:left;width:'45%';margin:'10px';height:'220px';padding:'10px'; border:'1px solid red'"></div>
+<!-- the template tag in action will take us to create_event view because in urls.py the views name is broadcast -->
+<!-- onsubmit of form StartPolling js function is called -->
+<form action="{% url 'broadcast' %}"  method="POST" onSubmit="StartPolling();">
+    {% csrf_token %}
+    <p> Start broadcast <br /><p>
+        <label>Pick your region: &nbsp;
+                <select name="region" id="region">
+                    <option value="asia-southeast-1">asia-southeast-1</option>
+                    <option value="do-bangalore-1">do-bangalore-1</option>
+                    <option value="asia-south1">asia-south1</option>
+                  </select>
+                </label> &nbsp;
+                <!-- after submission the selected value from the dropdown will go to the create event view -->
+              <button  type="submit" value="select" >Start broadcast</button> <br />
+              <span id="wait"></span>
+            </form>              
+            <!-- this js function will play as loading screen until we get the response of our request from the API  -->
+              <script>
+                  function StartPolling() {
+                  setInterval(function Polling() {
+                   
+                  var wait = document.getElementById("wait");
+                  if(wait.innerHTML.length==0)
+                    wait.innerHTML = "Polling";
+                  if ( wait.innerHTML.length > 10 ) 
+                    wait.innerHTML = "Polling";
+                  else 
+                    wait.innerHTML += ".";
+                  }, 1000);
+                  }
+                  
+              </script>
+
+    </p>
+            
+         
+</div>
+</div> 
+{% endblock %}

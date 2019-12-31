@@ -1,0 +1,35 @@
+{% load static %}
+<!-- all the html pages inherit all html from this page which
+     is common to all pages and diplay their own html which is unique to everypage in the body blocks -->
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <link rel='stylesheet' type = "text/css"  href="{% static 'css/index.css' %}">
+    {% block headblock %}
+    {% endblock %}
+    
+</head>
+
+<body style="background-color:  #282c34;">
+    <div class = 'page'>
+
+           </script>
+        <!-- on clicking on broadcast page url it will take you to 
+            create_event views and from there it will render another html page -->
+        <li><a href="{% url 'broadcast' %}">BroadCast page</a></li>
+        <!-- on clicking on viewers page url it will take you to 
+            viewers views and from there it will render another html page -->
+        <li><a href="{% url 'viewers' %}">Viewers Page</a></li>
+    </ul>
+    
+    {% block body_block %}
+    {% endblock %}
+</div>
+</body>
+
+</html>

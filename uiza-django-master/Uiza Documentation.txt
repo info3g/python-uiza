@@ -1,0 +1,250 @@
+How to build your live streaming web app with Uiza’s API using Python
+Dependencies:
+pip install python
+pip install django
+pip install json
+
+Setting up the project:
+1. Open your favorite editor
+2. open the terminal 
+3. write: django-admin createproject <projectName>(this makes a directory with your project name)
+4. cd into that project
+5. To make your app write: django-admin createApp <AppName>(this makes an app inside your project)
+6. Create a templates folder in which your html files will be held.Templates folder will be in project folder.
+7. Now in the project you created will have a setting.py file open that and add the app name to the installed apps      list.Also add templates path and add that path in templates dir.
+
+Setting up the templates folder
+
+create 4 html files in templates folder
+1. base.html
+2. homepage.html
+3. viewspage.html
+4. broadcastpage.html
+for now leave these empty
+
+Now how django connects and renders:
+we will define some urls in the urls.py file in project directory and there we write the view name which will perform some functions and then will render a html file.(url->view->html)
+url eg: path('viewers/', views.viewerspage, name = 'viewers') so here 'viewers/' is the url that will be added to localhost,views.viewerspage is name of views which will perform some functions on this url and name = 'viewers' is used to redirect to another view from html file after submission which we will use later.
+
+Writing the urls in urls.py file
+
+For now create 4 urls
+from AppName import views(this tells urls where to go after loading the specified url)
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', views.homepage, name='homepage'),
+    path('viewers/', views.viewerspage, name = 'viewers'),    
+    path('create_event/', views.create_event, name="broadcast")
+]  
+
+Note: this will give you some errors on saving saying couldnot find views for the urls but now we will create the views
+
+Creating the views:
+In views.py file we will define some important libraries
+from django.shortcuts import render #will render the HTML pages
+from django.http import HttpResponse #will render HttpResponse just to check the page 					works
+import json, requests # request to post and get the responses from API and json to 			convert response to json.
+
+#some constants
+
+# Authorization_key and URl
+Authorization_key = 'uap-bf3c07313f0241f2904ca99868e1faf5-e199a72f'
+url = 'https://development-api.uizadev.io/v1/live_entities'
+
+#Global variables
+stream_key = ''
+stream_url = ''
+stream_hls = ''
+NotPlayable = True
+
+1. homepage
+def homepage(request):#this is the homepage view
+    return render(request,'homepage.html')#renders the homepage.html page
+
+2. Viewers page
+def viewerspage(request):
+    # if broadcast button is not clicked then this view is rendered
+    if NotPlayable: 
+        print('got here')
+        list_of_videos = []
+        return render(request,'viewerspage.html')
+    else:    
+        # if broadcast button is clicked then this view is rendered and a context         dictionary is passed with stream_key, stream_url, playback link
+        
+        stream_dict=	{'stream_key':stream_key,'stream_url':stream_url,'playback':stream_hls}
+        list_of_videos.append(stream_dict)
+	#The last parameter of render is the context dictionary, these are the variables 	which store useful info that we would want to use in out templates
+	return render(request,'viewerspage.html',{'list_of_videos':list_of_videos})
+       	
+
+3. create Event - this view can be broken down to 2 parts creating the live stream and 		  retrieving the live stream
+
+a) creating live stream:
+	#when broadcast button is click post method is triggered
+    if request.method == "POST":
+        region = request.POST['region']
+        
+        # necessary headers and data for the post request 
+        headers = {'Authorization': Authorization_key ,
+                'Content-Type': 'application/json',
+                'cache-control': 'no-cache' }   
+        data = {
+                "name":"Demo",
+                "region":region,
+                "description":"AFF CUP"
+                }
+        #post request for the id of live stream    
+        response = requests.post(url = url, headers = headers, params= data)
+        print(response.text)
+        #convert the response to json
+        live_response = json.loads(response.text)
+        #retrieved id from json
+        created_id = live_response["id"]
+
+b) retrieving the live stream:
+	# Now make the get request using the headers and using the id retrieve the 	stream_key,stream_url and playback
+        get_headers = {
+            'Accept': '*/*',
+            'Accept-Encoding': 'gzip, deflate',
+            'Authorization': Authorization_key,
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive'
+        }
+        
+        newUrl = url+'/' + created_id
+        
+        i=0
+        #This while loop will make the get request from the uiza UPI till the status is 	not ready and retrieve the necessary info and then will render the homepage
+        while True:
+            retrieve_entity = requests.get(url = newUrl, headers=get_headers)
+            retrieve_entity_json = json.loads(retrieve_entity.text)
+            status = retrieve_entity_json["status"]
+            print(status)
+            print(i)
+            if status == "ready":
+                print(retrieve_entity_json)
+                global stream_url
+                stream_url = retrieve_entity_json["ingest"]["url"]
+                global stream_key
+                stream_key = retrieve_entity_json["ingest"]["key"]
+                global stream_hls
+                stream_hls = retrieve_entity_json['playback']['hls']
+                global NotPlayable
+                NotPlayable = False
+               
+                return render(request,'homepage.html')
+
+return render(request,'broadcastpage.html') #This render will be called if post request is not made 
+Now we go to our html pages which we created earlier:
+
+1. base.html
+{% load static %}
+<!-- all the html pages inherit all html from this page which
+     is common to all pages and diplay their own html which is unique to everypage in the body blocks -->
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <link rel='stylesheet' type = "text/css"  href="{% static 'css/index.css' %}">
+    
+</head>
+
+<body style="background-color:  #282c34;">
+    <div class = 'page'>
+
+           </script>
+        <!-- on clicking on broadcast page url it will take you to 
+            create_event views and from there it will render another html page -->
+        <li><a href="{% url 'broadcast' %}">BroadCast page</a></li>
+        <!-- on clicking on viewers page url it will take you to 
+            viewers views and from there it will render another html page -->
+        <li><a href="{% url 'viewers' %}">Viewers Page</a></li>
+    </ul>
+    
+    {% block body_block %}
+    {% endblock %}
+</div>
+</body>
+
+</html>
+
+2. homepage.html
+<!-- this page just inherits all the html content from base.html file -->
+{% extends 'base.html' %}
+
+{% block body_block %}
+{% endblock %}
+
+3. broadcastpage.html
+{% extends 'base.html' %}
+<!-- form for the broadcasting page which lets user to select the region and start broadcasting -->
+<h1>UIZA GUIDE</h1>
+<div style="align-content:left;float:left;width:'45%';margin:'10px';height:'220px';padding:'10px'; border:'1px solid red'"></div>
+<!-- the template tag in action will take us to create_event view because in urls.py the views name is broadcast -->
+<!-- onsubmit of form StartPolling js function is called -->
+<form action="{% url 'broadcast' %}"  method="POST" onSubmit="StartPolling();">
+    {% csrf_token %}
+    <p> Start broadcast <br /><p>
+        <label>Pick your region: &nbsp;
+                <select name="region" id="region">
+                    <option value="asia-southeast-1">asia-southeast-1</option>
+                    <option value="do-bangalore-1">do-bangalore-1</option>
+                    <option value="asia-south1">asia-south1</option>
+                  </select>
+                </label> &nbsp;
+                <!-- after submission the selected value from the dropdown will go to the create event view -->
+              <button  type="submit" value="select" >Start broadcast</button> <br />
+              <span id="wait"></span>
+            </form>              
+            <!-- this js function will play as loading screen until we get the response of our request from the API  -->
+              <script>
+                  function StartPolling() {
+                  setInterval(function Polling() {
+                   
+                  var wait = document.getElementById("wait");
+                  if(wait.innerHTML.length==0)
+                    wait.innerHTML = "Polling";
+                  if ( wait.innerHTML.length > 10 ) 
+                    wait.innerHTML = "Polling";
+                  else 
+                    wait.innerHTML += ".";
+                  }, 1000);
+                  }
+                  
+              </script>
+    </p>
+    
+</div>
+</div> 
+{% endblock %}
+
+4. viewerspage.html
+
+{% extends 'base.html' %}
+{% block body_block %}
+<h1>UIZA ONLINE VIDEOS</h1>
+
+     <!-- the list of videos got by the context dictionary will be displayed here with stream url, stream key and playback  -->
+     {% for each in list_of_videos %}  
+    
+     <div class = 'tileContainer' style="width: 240px; height: 200px;float: left; margin: 	10px; padding: 8px; display: flex; flex-Direction: column;
+      word-Wrap: break-word; font-Size: 16px; border: 2px solid white; background-      Color:Tomato;">    
+      {% for key, value in each.items %}
+  
+      <!-- play the video when playback link is found else just print the link in the       video tile -->
+      {% if key == 'playback' %}
+        <video src="key" type="application/x-mpegURL"></video>
+      {% else %}
+      <p><a href="{{value}}">{{key}}</a></p>
+      {% endif %}
+
+      </div>
+    {% endfor %}
+  {% endfor %}  
+{% endblock %}
+   
